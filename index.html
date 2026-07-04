@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#f4eeda">
 <style>
 :root {
-  --bg: #f4eeda;         /* 米色底 */
+  --bg: #f4eeda;
   --paper: #f4eeda;
   --fg: #2f2a22;
   --muted: #9b9178;
@@ -56,55 +56,59 @@ body {
 .bmeta { margin-top: 9px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
 .bmeta .p { color: var(--accent); }
 
-/* ============ 阅读器（v3：翻页模式） ============ */
+/* ============ 阅读器 v4:双常驻层翻页 ============ */
 #reader { position: fixed; inset: 0; background: var(--paper); }
+#pagehead {
+  position: absolute; top: calc(env(safe-area-inset-top) + 8px); left: 24px; right: 24px;
+  font-size: 11px; color: var(--muted); letter-spacing: .04em; pointer-events: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 #stage {
   position: absolute; left: 0; right: 0;
-  top: calc(env(safe-area-inset-top) + 8px);
-  bottom: calc(env(safe-area-inset-bottom) + 32px);
+  top: calc(env(safe-area-inset-top) + 30px);
+  bottom: calc(env(safe-area-inset-bottom) + 30px);
   overflow: hidden;
   touch-action: none;
 }
-#stage.spread::before {
-  content: ""; position: absolute; left: 50%; top: 3%; bottom: 3%; width: 1px;
-  background: var(--rule); z-index: 2; pointer-events: none;
+#stage.spread .spine {
+  position: absolute; left: 50%; top: 3%; bottom: 3%; width: 1px;
+  background: var(--rule); z-index: 6; pointer-events: none;
 }
-#content {
+.pagewrap {
+  position: absolute; inset: 0; overflow: hidden;
+  background: var(--paper); will-change: transform;
+  box-shadow: 26px 0 50px rgba(0,0,0,.26);
+}
+.pinner {
   column-fill: auto;
-  line-height: 2;
+  line-height: 1.9;
+  letter-spacing: .015em;
   will-change: transform;
   -webkit-user-select: text; user-select: text;
 }
-#content h1 {
-  font-size: 1.25em; line-height: 1.7; font-weight: 700;
-  margin: 0 0 1.2em; padding-top: 1.3em;
+.pinner h1 {
+  font-size: 1.3em; line-height: 1.6; font-weight: 700;
+  margin: 0 0 1.3em; padding-top: 1.6em;
   break-before: column;
 }
-#content h1:first-child { break-before: auto; }
-#content h3 { font-size: 1.05em; margin: 1.4em 0 .8em; }
-#content p { margin: 0 0 1em; text-align: justify; }
-#content ul { padding-left: 1.3em; margin: 0 0 1em; }
-#content li { margin-bottom: .4em; }
-#content blockquote { margin: 0 0 1em; padding: .1em 0 .1em 1em; border-left: 3px solid var(--rule); color: #6b6250; }
-#content hr { border: none; border-top: 1px solid var(--rule); margin: 2em auto; width: 40%; }
-#content strong { color: var(--accent); }
-#content em { font-style: normal; text-emphasis: dot; -webkit-text-emphasis: dot; }
-#content figure { margin: .5em 0 1em; break-inside: avoid; }
-#content img { max-width: 100%; max-height: 42vh; display: block; margin: 0 auto; border-radius: 4px; }
-#content figcaption { font-size: .72em; color: var(--muted); text-align: center; line-height: 1.6; margin-top: .5em; }
-#content .colophon { font-size: .82em; color: #6b6250; }
+.pinner h1:first-child { break-before: auto; }
+.pinner h3 { font-size: 1.05em; margin: 1.3em 0 .7em; }
+.pinner p { margin: 0 0 .78em; text-align: justify; }
+.pinner ul { padding-left: 1.3em; margin: 0 0 .78em; }
+.pinner li { margin-bottom: .35em; }
+.pinner blockquote { margin: 0 0 .78em; padding: .1em 0 .1em 1em; border-left: 3px solid var(--rule); color: #6b6250; }
+.pinner hr { border: none; border-top: 1px solid var(--rule); margin: 1.6em auto; width: 40%; }
+.pinner strong { color: var(--accent); }
+.pinner em { font-style: normal; text-emphasis: dot; -webkit-text-emphasis: dot; }
+.pinner figure { margin: .5em 0 .9em; break-inside: avoid; }
+.pinner img { max-width: 100%; max-height: 42vh; display: block; margin: 0 auto; border-radius: 4px; }
+.pinner figcaption { font-size: .72em; color: var(--muted); text-align: center; line-height: 1.6; margin-top: .5em; }
+.pinner .colophon { font-size: .82em; color: #6b6250; }
 .pgend { display: inline-block; width: 1px; height: 1px; }
-
-/* 仿真翻页的活动页 */
-.fliplayer {
-  position: absolute; inset: 0; overflow: hidden;
-  background: var(--paper); z-index: 3; will-change: transform;
-  box-shadow: 22px 0 44px rgba(0,0,0,.30);
-}
 
 #pagefoot {
   position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 8px);
-  display: flex; justify-content: space-between; padding: 0 22px;
+  display: flex; justify-content: space-between; padding: 0 24px;
   font-size: 11px; color: var(--muted); pointer-events: none; letter-spacing: .02em;
 }
 
@@ -137,6 +141,7 @@ body {
   background: #faf6e9; box-shadow: 4px 0 24px rgba(0,0,0,.18);
   padding: calc(env(safe-area-inset-top) + 20px) 0 20px;
   overflow-y: auto; transform: translateX(-105%); transition: transform .25s ease;
+  z-index: 11;
 }
 #toc.open { transform: none; }
 #toc h2 { font-size: 15px; margin: 0 20px 6px; }
@@ -146,13 +151,14 @@ body {
 #toc li.cur { color: var(--accent); }
 #toc li .pg { color: var(--muted); font-size: 11px; }
 
-/* 面板（设置/笔记）*/
+/* 面板 */
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0;
   background: #faf6e9; border-radius: 14px 14px 0 0;
   box-shadow: 0 -6px 30px rgba(0,0,0,.15);
   padding: 18px 20px calc(env(safe-area-inset-bottom) + 20px);
   max-height: 62vh; overflow-y: auto;
+  z-index: 12;
 }
 .sheet h3 { margin: 0 0 14px; font-size: 15px; }
 .fontrow { display: flex; gap: 12px; align-items: center; justify-content: center; }
@@ -168,8 +174,6 @@ body {
 .note-m { font-size: 11px; color: var(--muted); margin-top: 6px; display: flex; justify-content: space-between; }
 .note-m button { background: none; border: none; color: #b0654a; font-size: 11px; padding: 0; }
 .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 0; }
-
-/* 选中文字后的写笔记按钮 */
 #notebtn {
   position: fixed; z-index: 50; background: #3a332a; color: #f3ecdb;
   font-size: 13px; padding: 8px 14px; border-radius: 18px; border: none;
@@ -180,9 +184,7 @@ body {
   background: #fffdf4; border: 1px solid var(--rule); border-radius: 8px; padding: 10px; color: var(--fg);
 }
 #noteinput .actions { display: flex; gap: 12px; margin-top: 12px; }
-#noteinput .actions button {
-  flex: 1; padding: 11px; border-radius: 8px; border: none; font-size: 15px;
-}
+#noteinput .actions button { flex: 1; padding: 11px; border-radius: 8px; border: none; font-size: 15px; }
 #noteinput .save { background: var(--accent); color: #fff; }
 #noteinput .cancel { background: #f1ead4; color: var(--fg); }
 #scrim { position: absolute; inset: 0; background: rgba(0,0,0,.12); }
@@ -193,8 +195,13 @@ body {
 <main id="shelf"></main>
 
 <div id="reader" class="hidden">
-  <div id="stage"><div id="content"></div></div>
-  <div id="pagefoot"><span id="pf-ch"></span><span id="pf-info"></span></div>
+  <div id="pagehead"><span id="ph-ch"></span></div>
+  <div id="stage">
+    <div class="pagewrap" id="pw0"><div class="pinner"></div></div>
+    <div class="pagewrap" id="pw1"><div class="pinner"></div></div>
+    <div class="spine"></div>
+  </div>
+  <div id="pagefoot"><span id="pf-pg"></span><span id="pf-info"></span></div>
   <div id="menu" class="hidden">
     <div id="scrim"></div>
     <div id="topbar">
@@ -219,6 +226,7 @@ body {
   'use strict';
   var LIB = (window.LIBRARY && window.LIBRARY.books) || [];
   var READ_SPEED = 450; // 字/分钟
+  var GAP = 70;         // 翻页时页面滑出的额外距离(容纳阴影)
 
   // ---------- 存储 ----------
   function store(key, val) {
@@ -228,24 +236,28 @@ body {
     try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
   }
   var prefs = store('lib.prefs') || {};
-  if (prefs.v !== 3) {
-    if (!prefs.fs || prefs.fs < 20) prefs.fs = 20;
+  if (prefs.v !== 4) {
+    prefs.fs = Math.max(prefs.fs || 0, 21);
     if (!prefs.flip) prefs.flip = 'cover';
-    prefs.v = 3;
+    prefs.v = 4;
     store('lib.prefs', prefs);
   }
-  var progress = store('lib.progress') || {};   // {bookId: {ratio, pct}}
-  var seen = store('lib.seen') || {};           // {bookId: updated}
-  var notes = store('lib.notes') || [];         // [{bookId, quote, note, ch, ts}]
+  var progress = store('lib.progress') || {};
+  var seen = store('lib.seen') || {};
+  var notes = store('lib.notes') || [];
 
   var shelf = document.getElementById('shelf');
   var reader = document.getElementById('reader');
   var stage = document.getElementById('stage');
-  var content = document.getElementById('content');
   var menu = document.getElementById('menu');
   var toc = document.getElementById('toc');
   var slider = document.getElementById('slider');
-  var cur = null; // {book, page, pages, w, chPage:[], flipping}
+  var LAY = [
+    { wrap: document.getElementById('pw0'), inner: document.querySelector('#pw0 .pinner') },
+    { wrap: document.getElementById('pw1'), inner: document.querySelector('#pw1 .pinner') }
+  ];
+  var cur = null; // {book, page, pages, w, chPage:[], top, anim}
+  function curInner() { return LAY[cur.top].inner; }
 
   // ---------- 书架 ----------
   function renderShelf() {
@@ -290,18 +302,18 @@ body {
     book.chapters.forEach(function (c, i) {
       html += '<h1 data-ch="' + i + '">' + c.title + '</h1>' + c.html;
     });
-    content.innerHTML = html + '<span class="pgend"></span>';
+    html += '<span class="pgend"></span>';
+    LAY[0].inner.innerHTML = html;
+    LAY[1].inner.innerHTML = html;
     document.getElementById('menuTitle').textContent = book.title;
-    cur = { book: book, page: 0, pages: 1, w: 0, chPage: [], flipping: false };
+    cur = { book: book, page: 0, pages: 1, w: 0, chPage: [], top: 0, anim: false };
     layout(function () {
       var pr = progress[book.id];
-      var p = (pr && pr.ratio > 0) ? Math.round(pr.ratio * (cur.pages - 1)) : 0;
-      setPage(p, false);
+      setPage((pr && pr.ratio > 0) ? Math.round(pr.ratio * (cur.pages - 1)) : 0);
     });
   }
 
-  // ---------- 分页布局 ----------
-  // 行宽上限 27 个汉字（微信读书手感）；宽屏（iPad横放）双栏对开
+  // ---------- 分页布局:行宽 ≤27字,宽屏双栏 ----------
   function layout(cb) {
     var w = stage.clientWidth, h = stage.clientHeight;
     var fs = prefs.fs;
@@ -317,23 +329,28 @@ body {
       pad = Math.floor((w - colW) / 2);
     }
     stage.classList.toggle('spread', two);
-    content.style.fontSize = fs + 'px';
-    content.style.width = w + 'px';
-    content.style.height = h + 'px';
-    content.style.padding = '0 ' + pad + 'px';
-    content.style.columnWidth = colW + 'px';
-    content.style.columnGap = (pad * 2) + 'px';
-    content.style.transition = 'none';
-    content.style.transform = 'translateX(0px)';
+    LAY.forEach(function (l) {
+      l.wrap.style.transition = 'none';
+      l.wrap.style.transform = 'translateX(0px)';
+      var s = l.inner.style;
+      s.fontSize = fs + 'px';
+      s.width = w + 'px';
+      s.height = h + 'px';
+      s.padding = '0 ' + pad + 'px';
+      s.columnWidth = colW + 'px';
+      s.columnGap = (pad * 2) + 'px';
+      s.transition = 'none';
+      s.transform = 'translateX(0px)';
+    });
     cur.w = w;
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         var srect = stage.getBoundingClientRect();
-        var endEl = content.querySelector('.pgend');
-        var endX = endEl ? (endEl.getBoundingClientRect().left - srect.left) : content.scrollWidth;
+        var endEl = LAY[0].inner.querySelector('.pgend');
+        var endX = endEl ? (endEl.getBoundingClientRect().left - srect.left) : LAY[0].inner.scrollWidth;
         cur.pages = Math.max(1, Math.floor(endX / w) + 1);
         cur.chPage = [];
-        content.querySelectorAll('h1[data-ch]').forEach(function (el) {
+        LAY[0].inner.querySelectorAll('h1[data-ch]').forEach(function (el) {
           cur.chPage.push(Math.max(0, Math.floor((el.getBoundingClientRect().left - srect.left) / w)));
         });
         if (cb) cb();
@@ -342,66 +359,85 @@ body {
   }
 
   function clampPage(n) { return Math.max(0, Math.min(cur.pages - 1, n)); }
-
-  function setPage(n, anim) {
+  function setInner(l, p) {
+    l.inner.style.transition = 'none';
+    l.inner.style.transform = 'translateX(' + (-p * cur.w) + 'px)';
+  }
+  function zApply() {
+    LAY[cur.top].wrap.style.zIndex = 2;
+    LAY[1 - cur.top].wrap.style.zIndex = 1;
+  }
+  // 瞬时定位(打开书/滑进度条/跳目录)
+  function setPage(n) {
     n = clampPage(n);
-    content.style.transition = anim ? 'transform .3s cubic-bezier(.25,.6,.3,1)' : 'none';
-    content.style.transform = 'translateX(' + (-n * cur.w) + 'px)';
     cur.page = n;
+    LAY.forEach(function (l) {
+      l.wrap.style.transition = 'none';
+      l.wrap.style.transform = 'translateX(0px)';
+      setInner(l, n);
+    });
+    zApply();
     updateFoot();
   }
 
-  // ---------- 仿真翻页（覆盖式：当前页滑走/滑入，带页边阴影） ----------
-  function makeLayer(showPage, fwd) {
-    var l = document.createElement('div');
-    l.className = 'fliplayer';
-    var c = content.cloneNode(true);
-    c.removeAttribute('id');
-    c.style.cssText = content.style.cssText;
-    c.style.transition = 'none';
-    c.style.transform = 'translateX(' + (-showPage * cur.w) + 'px)';
-    l.appendChild(c);
-    l.style.transform = fwd ? 'translateX(0px)' : 'translateX(' + (-cur.w - 50) + 'px)';
-    stage.appendChild(l);
-    return l;
+  // ---------- 翻页动画(常驻双层,无克隆无卡顿) ----------
+  var EASE = 'cubic-bezier(.22,.61,.36,1)';
+  function finishFlip(newTop, target) {
+    cur.top = newTop;
+    cur.page = target;
+    var other = LAY[1 - cur.top];
+    other.wrap.style.transition = 'none';
+    other.wrap.style.transform = 'translateX(0px)';
+    setInner(other, target);
+    zApply();
+    cur.anim = false;
+    updateFoot();
   }
 
   function flip(target) {
-    if (!cur || cur.flipping) return;
+    if (!cur || cur.anim) return;
     target = clampPage(target);
     if (target === cur.page) return;
-    if (prefs.flip !== 'cover') {
-      cur.flipping = true;
-      setPage(target, true);
-      setTimeout(function () { cur.flipping = false; }, 320);
+    if (prefs.flip !== 'cover') { // 平移模式
+      cur.anim = true;
+      var l = LAY[cur.top];
+      l.inner.style.transition = 'transform .38s ' + EASE;
+      l.inner.style.transform = 'translateX(' + (-target * cur.w) + 'px)';
+      setTimeout(function () { setPage(target); cur.anim = false; }, 400);
       return;
     }
-    var fwd = target > cur.page;
-    var orig = cur.page;
-    var layer = makeLayer(fwd ? orig : target, fwd);
-    if (fwd) setPage(target, false);
-    cur.flipping = true;
-    requestAnimationFrame(function () {
+    var bot = 1 - cur.top;
+    cur.anim = true;
+    if (target > cur.page) { // 向前:当前页滑走,露出下一页
+      setInner(LAY[bot], target);
+      var mover = LAY[cur.top].wrap;
       requestAnimationFrame(function () {
-        layer.style.transition = 'transform .32s cubic-bezier(.25,.6,.3,1)';
-        layer.style.transform = fwd ? 'translateX(' + (-cur.w - 50) + 'px)' : 'translateX(0px)';
+        requestAnimationFrame(function () {
+          mover.style.transition = 'transform .45s ' + EASE;
+          mover.style.transform = 'translateX(' + (-(cur.w + GAP)) + 'px)';
+        });
       });
-    });
-    setTimeout(function () {
-      if (!fwd) setPage(target, false);
-      layer.remove();
-      cur.flipping = false;
-      updateFoot();
-    }, 350);
+      setTimeout(function () { finishFlip(bot, target); }, 480);
+    } else { // 向后:上一页从左边盖回来
+      var m = LAY[bot];
+      setInner(m, target);
+      m.wrap.style.transition = 'none';
+      m.wrap.style.transform = 'translateX(' + (-(cur.w + GAP)) + 'px)';
+      m.wrap.style.zIndex = 3;
+      m.wrap.getBoundingClientRect(); // 强制回流
+      m.wrap.style.transition = 'transform .45s ' + EASE;
+      m.wrap.style.transform = 'translateX(0px)';
+      setTimeout(function () { finishFlip(bot, target); }, 480);
+    }
   }
 
-  // ---------- 手指跟随拖拽翻页 ----------
+  // ---------- 手指跟随拖拽 ----------
   var D = null, suppressClick = false;
   stage.addEventListener('touchstart', function (e) {
-    if (!cur || cur.flipping || !menu.classList.contains('hidden')) { D = null; return; }
+    if (!cur || cur.anim || !menu.classList.contains('hidden')) { D = null; return; }
     if (e.touches.length !== 1) { D = null; return; }
     D = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(),
-          active: false, dir: 0, layer: null, orig: 0, target: 0, dx: 0 };
+          active: false, dir: 0, orig: 0, target: 0, dx: 0 };
   }, { passive: true });
 
   stage.addEventListener('touchmove', function (e) {
@@ -419,23 +455,33 @@ body {
       var target = cur.page + dir;
       if (target < 0 || target > cur.pages - 1) { D = null; return; }
       D.active = true; D.dir = dir; D.orig = cur.page; D.target = target;
+      var bot = 1 - cur.top;
       if (prefs.flip === 'cover') {
-        D.layer = makeLayer(dir > 0 ? D.orig : target, dir > 0);
-        if (dir > 0) setPage(target, false);
+        setInner(LAY[bot], target);
+        if (dir < 0) {
+          LAY[bot].wrap.style.transition = 'none';
+          LAY[bot].wrap.style.transform = 'translateX(' + (-(cur.w + GAP)) + 'px)';
+          LAY[bot].wrap.style.zIndex = 3;
+        }
       }
     }
     e.preventDefault();
     D.dx = dx;
     if (prefs.flip === 'cover') {
-      var tx;
-      if (D.dir > 0) tx = Math.min(0, Math.max(-cur.w, dx));
-      else tx = (-cur.w - 50) + Math.min(cur.w + 50, Math.max(0, dx));
-      D.layer.style.transition = 'none';
-      D.layer.style.transform = 'translateX(' + tx + 'px)';
+      if (D.dir > 0) {
+        var tx = Math.min(0, Math.max(-cur.w - GAP, dx));
+        LAY[cur.top].wrap.style.transition = 'none';
+        LAY[cur.top].wrap.style.transform = 'translateX(' + tx + 'px)';
+      } else {
+        var tx2 = (-(cur.w + GAP)) + Math.min(cur.w + GAP, Math.max(0, dx));
+        LAY[1 - cur.top].wrap.style.transition = 'none';
+        LAY[1 - cur.top].wrap.style.transform = 'translateX(' + tx2 + 'px)';
+      }
     } else {
       var lim = D.dir > 0 ? Math.min(0, dx) : Math.max(0, dx);
-      content.style.transition = 'none';
-      content.style.transform = 'translateX(' + (-D.orig * cur.w + lim) + 'px)';
+      var l = LAY[cur.top];
+      l.inner.style.transition = 'none';
+      l.inner.style.transform = 'translateX(' + (-D.orig * cur.w + lim) + 'px)';
     }
   }, { passive: false });
 
@@ -445,33 +491,40 @@ body {
     suppressClick = true;
     setTimeout(function () { suppressClick = false; }, 400);
     var dx = D.dx, w = cur.w;
-    var quick = (Date.now() - D.t) < 200 && Math.abs(dx) > 30;
-    var commit = quick || Math.abs(dx) > w * 0.2;
+    var quick = (Date.now() - D.t) < 220 && Math.abs(dx) > 28;
+    var commit = quick || Math.abs(dx) > w * 0.18;
     if (D.dir > 0 && dx > 0) commit = false;
     if (D.dir < 0 && dx < 0) commit = false;
-    cur.flipping = true;
-    var layer = D.layer, dir = D.dir, orig = D.orig, target = D.target;
+    var dir = D.dir, orig = D.orig, target = D.target, bot = 1 - cur.top;
+    cur.anim = true;
+    // 松手后按剩余距离配速,越接近终点越快收尾
+    var fracLeft = Math.min(1, Math.abs(dx) / w);
+    var dur = commit ? Math.max(160, Math.round(420 * (1 - fracLeft))) : 240;
     if (prefs.flip === 'cover') {
-      layer.style.transition = 'transform .24s ease-out';
-      if (dir > 0) layer.style.transform = commit ? 'translateX(' + (-w - 50) + 'px)' : 'translateX(0px)';
-      else layer.style.transform = commit ? 'translateX(0px)' : 'translateX(' + (-w - 50) + 'px)';
+      var moverL = dir > 0 ? LAY[cur.top] : LAY[bot];
+      moverL.wrap.style.transition = 'transform ' + dur + 'ms ' + EASE;
+      if (dir > 0) moverL.wrap.style.transform = commit ? 'translateX(' + (-(w + GAP)) + 'px)' : 'translateX(0px)';
+      else moverL.wrap.style.transform = commit ? 'translateX(0px)' : 'translateX(' + (-(w + GAP)) + 'px)';
       setTimeout(function () {
-        if (dir > 0) { if (!commit) setPage(orig, false); }
-        else { if (commit) setPage(target, false); }
-        layer.remove();
-        cur.flipping = false;
-        updateFoot();
-      }, 270);
+        if (commit) finishFlip(bot, target);
+        else {
+          LAY[bot].wrap.style.zIndex = 1;
+          setPage(orig);
+          cur.anim = false;
+        }
+      }, dur + 40);
     } else {
-      setPage(commit ? target : orig, true);
-      setTimeout(function () { cur.flipping = false; }, 320);
+      var l = LAY[cur.top];
+      l.inner.style.transition = 'transform ' + dur + 'ms ' + EASE;
+      l.inner.style.transform = 'translateX(' + (-(commit ? target : orig) * w) + 'px)';
+      setTimeout(function () { setPage(commit ? target : orig); cur.anim = false; }, dur + 40);
     }
     D = null;
   }
   stage.addEventListener('touchend', endDrag);
   stage.addEventListener('touchcancel', endDrag);
 
-  // ---------- 页脚信息 / 进度 ----------
+  // ---------- 页眉/页脚/进度 ----------
   function chapterAt(page) {
     var i = 0;
     for (var k = 0; k < cur.chPage.length; k++) if (cur.chPage[k] <= page) i = k;
@@ -488,7 +541,8 @@ body {
     within = Math.max(0, Math.min(1, within));
     var remainChars = Math.round(cur.book.chapters[ci].chars * (1 - within));
     var mins = Math.ceil(remainChars / READ_SPEED);
-    document.getElementById('pf-ch').textContent = cur.book.chapters[ci].title.replace(/：.*/, '');
+    document.getElementById('ph-ch').textContent = cur.book.chapters[ci].title.replace(/：.*/, '');
+    document.getElementById('pf-pg').textContent = (p + 1) + ' / ' + n;
     document.getElementById('pf-info').textContent =
       (remainChars > 0 ? '本章还剩 ' + mins + ' 分钟 · ' : '本章完 · ') + Math.round(pct * 100) + '%';
     slider.value = n > 1 ? Math.round((p / (n - 1)) * 1000) : 0;
@@ -507,7 +561,7 @@ body {
     if (!menu.classList.contains('hidden')) return;
     var sel = window.getSelection();
     if (sel && sel.toString().trim()) return;
-    if (e.target.closest('#pagefoot')) return;
+    if (e.target.closest('#pagefoot') || e.target.closest('#pagehead')) return;
     var w = window.innerWidth, x = e.clientX;
     if (x < w * 0.3) flip(cur.page - 1);
     else if (x > w * 0.7) flip(cur.page + 1);
@@ -537,7 +591,7 @@ body {
   });
 
   slider.addEventListener('input', function () {
-    setPage(Math.round((slider.value / 1000) * (cur.pages - 1)), false);
+    setPage(Math.round((slider.value / 1000) * (cur.pages - 1)));
   });
 
   // ---------- 目录 ----------
@@ -552,14 +606,14 @@ body {
     toc.innerHTML = h;
     toc.querySelectorAll('li').forEach(function (li) {
       li.addEventListener('click', function () {
-        setPage(cur.chPage[+li.getAttribute('data-i')] || 0, false);
+        setPage(cur.chPage[+li.getAttribute('data-i')] || 0);
         hideMenu();
       });
     });
     toc.classList.add('open');
   });
 
-  // ---------- 设置（字号 + 翻页方式） ----------
+  // ---------- 设置 ----------
   var sheet = null;
   function openSheet(html) {
     closeSheet();
@@ -579,10 +633,10 @@ body {
       '<button id="fSlide" class="' + (prefs.flip === 'slide' ? 'on' : '') + '">平移</button></div>');
     function relayout() {
       var keep = cur.pages > 1 ? cur.page / (cur.pages - 1) : 0;
-      layout(function () { setPage(Math.round(keep * (cur.pages - 1)), false); });
+      layout(function () { setPage(Math.round(keep * (cur.pages - 1))); });
     }
     function setFs(v) {
-      prefs.fs = Math.max(16, Math.min(26, v));
+      prefs.fs = Math.max(16, Math.min(28, v));
       store('lib.prefs', prefs);
       s.querySelector('#fCur').textContent = prefs.fs + 'px';
       relayout();
@@ -601,13 +655,13 @@ body {
   // ---------- 笔记 ----------
   var noteBtn = null;
   document.addEventListener('selectionchange', function () {
-    if (reader.classList.contains('hidden')) return;
+    if (!cur || reader.classList.contains('hidden')) return;
     var sel = window.getSelection();
     if (noteBtn) { noteBtn.remove(); noteBtn = null; }
     if (!sel || sel.isCollapsed) return;
     var txt = sel.toString().trim();
     if (!txt || txt.length < 2) return;
-    if (!content.contains(sel.anchorNode)) return;
+    if (!curInner().contains(sel.anchorNode)) return;
     var r = sel.getRangeAt(0).getBoundingClientRect();
     noteBtn = document.createElement('button');
     noteBtn.id = 'notebtn';
@@ -671,7 +725,7 @@ body {
     if (rsTimer) clearTimeout(rsTimer);
     rsTimer = setTimeout(function () {
       var keep = cur.pages > 1 ? cur.page / (cur.pages - 1) : 0;
-      layout(function () { setPage(Math.round(keep * (cur.pages - 1)), false); });
+      layout(function () { setPage(Math.round(keep * (cur.pages - 1))); });
     }, 200);
   });
 
