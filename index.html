@@ -59,14 +59,14 @@ body {
 /* ============ 阅读器 v4:双常驻层翻页 ============ */
 #reader { position: fixed; inset: 0; background: var(--paper); }
 #pagehead {
-  position: absolute; top: calc(env(safe-area-inset-top) + 8px); left: 24px; right: 24px;
+  position: absolute; top: calc(env(safe-area-inset-top) + 4px); left: 28px; right: 28px;
   font-size: 11px; color: var(--muted); letter-spacing: .04em; pointer-events: none;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #stage {
   position: absolute; left: 0; right: 0;
-  top: calc(env(safe-area-inset-top) + 30px);
-  bottom: calc(env(safe-area-inset-bottom) + 30px);
+  top: calc(env(safe-area-inset-top) + 24px);
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
   overflow: hidden;
   touch-action: none;
 }
@@ -77,24 +77,26 @@ body {
 .pagewrap {
   position: absolute; inset: 0; overflow: hidden;
   background: var(--paper); will-change: transform;
-  box-shadow: 26px 0 50px rgba(0,0,0,.26);
+  box-shadow: 14px 0 36px rgba(40,30,15,.18);
 }
 .pinner {
   column-fill: auto;
-  line-height: 1.9;
+  line-height: 1.72;
   letter-spacing: .015em;
   will-change: transform;
   -webkit-user-select: text; user-select: text;
 }
 .pinner h1 {
-  font-size: 1.3em; line-height: 1.6; font-weight: 700;
-  margin: 0 0 1.3em; padding-top: 1.6em;
+  font-family: "Songti SC", "Noto Serif SC", serif;
+  font-size: 1.55em; line-height: 1.5; font-weight: 700;
+  margin: 0 0 1.2em; padding: 1.4em 0 .5em;
+  border-bottom: 1px solid var(--rule);
   break-before: column;
 }
 .pinner h1:first-child { break-before: auto; }
 .pinner h3 { font-size: 1.05em; margin: 1.3em 0 .7em; }
-.pinner p { margin: 0 0 .78em; text-align: justify; }
-.pinner ul { padding-left: 1.3em; margin: 0 0 .78em; }
+.pinner p { margin: 0 0 .95em; text-align: justify; }
+.pinner ul { padding-left: 1.3em; margin: 0 0 .95em; }
 .pinner li { margin-bottom: .35em; }
 .pinner blockquote { margin: 0 0 .78em; padding: .1em 0 .1em 1em; border-left: 3px solid var(--rule); color: #6b6250; }
 .pinner hr { border: none; border-top: 1px solid var(--rule); margin: 1.6em auto; width: 40%; }
@@ -107,8 +109,8 @@ body {
 .pgend { display: inline-block; width: 1px; height: 1px; }
 
 #pagefoot {
-  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 8px);
-  display: flex; justify-content: space-between; padding: 0 24px;
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 6px);
+  display: flex; justify-content: space-between; padding: 0 28px;
   font-size: 11px; color: var(--muted); pointer-events: none; letter-spacing: .02em;
 }
 
@@ -317,8 +319,9 @@ body {
   function layout(cb) {
     var w = stage.clientWidth, h = stage.clientHeight;
     var fs = prefs.fs;
-    var maxW = Math.round(fs * 27);
-    var MIN = 18;
+    var maxW = Math.round(fs * 24); // 微信读书实测约21.7字/行,24为上限
+    var MIN = 30; // 微信读书实测页边距33pt
+
     var two = w >= 860;
     var colW, pad;
     if (two) {
@@ -381,7 +384,8 @@ body {
   }
 
   // ---------- 翻页动画(常驻双层,无克隆无卡顿) ----------
-  var EASE = 'cubic-bezier(.22,.61,.36,1)';
+  var EASE = 'cubic-bezier(.25,.46,.2,1)'; // 微信读书式:起步柔、收尾缓
+  var FLIP_MS = 520;
   function finishFlip(newTop, target) {
     cur.top = newTop;
     cur.page = target;
@@ -401,9 +405,9 @@ body {
     if (prefs.flip !== 'cover') { // 平移模式
       cur.anim = true;
       var l = LAY[cur.top];
-      l.inner.style.transition = 'transform .38s ' + EASE;
+      l.inner.style.transition = 'transform ' + FLIP_MS + 'ms ' + EASE;
       l.inner.style.transform = 'translateX(' + (-target * cur.w) + 'px)';
-      setTimeout(function () { setPage(target); cur.anim = false; }, 400);
+      setTimeout(function () { setPage(target); cur.anim = false; }, FLIP_MS + 40);
       return;
     }
     var bot = 1 - cur.top;
@@ -413,11 +417,11 @@ body {
       var mover = LAY[cur.top].wrap;
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
-          mover.style.transition = 'transform .45s ' + EASE;
+          mover.style.transition = 'transform ' + FLIP_MS + 'ms ' + EASE;
           mover.style.transform = 'translateX(' + (-(cur.w + GAP)) + 'px)';
         });
       });
-      setTimeout(function () { finishFlip(bot, target); }, 480);
+      setTimeout(function () { finishFlip(bot, target); }, FLIP_MS + 40);
     } else { // 向后:上一页从左边盖回来
       var m = LAY[bot];
       setInner(m, target);
@@ -425,9 +429,9 @@ body {
       m.wrap.style.transform = 'translateX(' + (-(cur.w + GAP)) + 'px)';
       m.wrap.style.zIndex = 3;
       m.wrap.getBoundingClientRect(); // 强制回流
-      m.wrap.style.transition = 'transform .45s ' + EASE;
+      m.wrap.style.transition = 'transform ' + FLIP_MS + 'ms ' + EASE;
       m.wrap.style.transform = 'translateX(0px)';
-      setTimeout(function () { finishFlip(bot, target); }, 480);
+      setTimeout(function () { finishFlip(bot, target); }, FLIP_MS + 40);
     }
   }
 
@@ -497,9 +501,9 @@ body {
     if (D.dir < 0 && dx < 0) commit = false;
     var dir = D.dir, orig = D.orig, target = D.target, bot = 1 - cur.top;
     cur.anim = true;
-    // 松手后按剩余距离配速,越接近终点越快收尾
+    // 松手后按剩余距离配速,越接近终点越慢收尾,不急刹
     var fracLeft = Math.min(1, Math.abs(dx) / w);
-    var dur = commit ? Math.max(160, Math.round(420 * (1 - fracLeft))) : 240;
+    var dur = commit ? Math.max(220, Math.round(FLIP_MS * (1 - fracLeft * 0.6))) : 280;
     if (prefs.flip === 'cover') {
       var moverL = dir > 0 ? LAY[cur.top] : LAY[bot];
       moverL.wrap.style.transition = 'transform ' + dur + 'ms ' + EASE;
@@ -626,11 +630,22 @@ body {
   function closeSheet() { if (sheet) { sheet.remove(); sheet = null; } }
 
   document.getElementById('btnFont').addEventListener('click', function () {
+    var fsAPI = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
     var s = openSheet('<h3>字号</h3><div class="fontrow">' +
       '<button id="fMinus">A−</button><span class="cur" id="fCur">' + prefs.fs + 'px</span><button id="fPlus">A＋</button></div>' +
       '<h3 style="margin-top:20px">翻页方式</h3><div class="fontrow">' +
       '<button id="fCover" class="' + (prefs.flip === 'cover' ? 'on' : '') + '">仿真翻页</button>' +
-      '<button id="fSlide" class="' + (prefs.flip === 'slide' ? 'on' : '') + '">平移</button></div>');
+      '<button id="fSlide" class="' + (prefs.flip === 'slide' ? 'on' : '') + '">平移</button></div>' +
+      (fsAPI ? '<h3 style="margin-top:20px">沉浸</h3><div class="fontrow"><button id="fFull">全屏（隐藏系统状态栏）</button></div>' : ''));
+    if (fsAPI) s.querySelector('#fFull').addEventListener('click', function () {
+      var d = document, el = d.documentElement;
+      if (d.fullscreenElement || d.webkitFullscreenElement) {
+        (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+      } else {
+        (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+      }
+      hideMenu();
+    });
     function relayout() {
       var keep = cur.pages > 1 ? cur.page / (cur.pages - 1) : 0;
       layout(function () { setPage(Math.round(keep * (cur.pages - 1))); });
