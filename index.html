@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#f4eeda">
 <style>
 :root {
@@ -56,26 +56,28 @@ body {
 .bmeta { margin-top: 9px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
 .bmeta .p { color: var(--accent); }
 
-/* ============ 阅读器 ============ */
+/* ============ 阅读器（v3：翻页模式） ============ */
 #reader { position: fixed; inset: 0; background: var(--paper); }
-#scroller {
+#stage {
   position: absolute; left: 0; right: 0;
-  top: calc(env(safe-area-inset-top) + 14px);
-  bottom: calc(env(safe-area-inset-bottom) + 34px);
-  overflow-x: auto; overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  top: calc(env(safe-area-inset-top) + 8px);
+  bottom: calc(env(safe-area-inset-bottom) + 32px);
+  overflow: hidden;
+  touch-action: none;
 }
-#scroller::-webkit-scrollbar { display: none; }
+#stage.spread::before {
+  content: ""; position: absolute; left: 50%; top: 3%; bottom: 3%; width: 1px;
+  background: var(--rule); z-index: 2; pointer-events: none;
+}
 #content {
-  height: 100%;
   column-fill: auto;
   line-height: 2;
-  font-size: 18px;
+  will-change: transform;
+  -webkit-user-select: text; user-select: text;
 }
 #content h1 {
-  font-size: 1.28em; line-height: 1.7; font-weight: 700;
-  margin: 0 0 1.2em; padding-top: 1.4em;
+  font-size: 1.25em; line-height: 1.7; font-weight: 700;
+  margin: 0 0 1.2em; padding-top: 1.3em;
   break-before: column;
 }
 #content h1:first-child { break-before: auto; }
@@ -91,15 +93,23 @@ body {
 #content img { max-width: 100%; max-height: 42vh; display: block; margin: 0 auto; border-radius: 4px; }
 #content figcaption { font-size: .72em; color: var(--muted); text-align: center; line-height: 1.6; margin-top: .5em; }
 #content .colophon { font-size: .82em; color: #6b6250; }
+.pgend { display: inline-block; width: 1px; height: 1px; }
+
+/* 仿真翻页的活动页 */
+.fliplayer {
+  position: absolute; inset: 0; overflow: hidden;
+  background: var(--paper); z-index: 3; will-change: transform;
+  box-shadow: 22px 0 44px rgba(0,0,0,.30);
+}
 
 #pagefoot {
-  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 10px);
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 8px);
   display: flex; justify-content: space-between; padding: 0 22px;
   font-size: 11px; color: var(--muted); pointer-events: none; letter-spacing: .02em;
 }
 
 /* 菜单 */
-#menu { position: absolute; inset: 0; }
+#menu { position: absolute; inset: 0; z-index: 10; }
 #topbar {
   position: absolute; top: 0; left: 0; right: 0;
   padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
@@ -136,7 +146,7 @@ body {
 #toc li.cur { color: var(--accent); }
 #toc li .pg { color: var(--muted); font-size: 11px; }
 
-/* 面板（字号/笔记）*/
+/* 面板（设置/笔记）*/
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0;
   background: #faf6e9; border-radius: 14px 14px 0 0;
@@ -150,6 +160,7 @@ body {
   flex: 1; font-size: 16px; padding: 10px; background: #f1ead4;
   border: 1px solid var(--rule); border-radius: 8px; color: var(--fg);
 }
+.fontrow button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .fontrow .cur { text-align: center; min-width: 60px; color: var(--muted); font-size: 13px; }
 .note-item { border-bottom: 1px solid #efe8d2; padding: 12px 0; }
 .note-q { font-size: 13px; color: #6b6250; border-left: 3px solid var(--rule); padding-left: 10px; margin-bottom: 6px; line-height: 1.7; }
@@ -182,7 +193,7 @@ body {
 <main id="shelf"></main>
 
 <div id="reader" class="hidden">
-  <div id="scroller"><div id="content"></div></div>
+  <div id="stage"><div id="content"></div></div>
   <div id="pagefoot"><span id="pf-ch"></span><span id="pf-info"></span></div>
   <div id="menu" class="hidden">
     <div id="scrim"></div>
@@ -194,7 +205,7 @@ body {
       <input type="range" id="slider" min="0" max="1000" value="0">
       <div id="botrow">
         <button id="btnToc">目录</button>
-        <button id="btnFont">字号</button>
+        <button id="btnFont">设置</button>
         <button id="btnNotes">笔记</button>
       </div>
     </div>
@@ -207,7 +218,7 @@ body {
 (function () {
   'use strict';
   var LIB = (window.LIBRARY && window.LIBRARY.books) || [];
-  var PAD = 24, READ_SPEED = 450; // 字/分钟
+  var READ_SPEED = 450; // 字/分钟
 
   // ---------- 存储 ----------
   function store(key, val) {
@@ -216,25 +227,30 @@ body {
     }
     try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
   }
-  var prefs = store('lib.prefs') || { fs: 18 };
+  var prefs = store('lib.prefs') || {};
+  if (prefs.v !== 3) {
+    if (!prefs.fs || prefs.fs < 20) prefs.fs = 20;
+    if (!prefs.flip) prefs.flip = 'cover';
+    prefs.v = 3;
+    store('lib.prefs', prefs);
+  }
   var progress = store('lib.progress') || {};   // {bookId: {ratio, pct}}
   var seen = store('lib.seen') || {};           // {bookId: updated}
   var notes = store('lib.notes') || [];         // [{bookId, quote, note, ch, ts}]
 
   var shelf = document.getElementById('shelf');
   var reader = document.getElementById('reader');
-  var scroller = document.getElementById('scroller');
+  var stage = document.getElementById('stage');
   var content = document.getElementById('content');
   var menu = document.getElementById('menu');
   var toc = document.getElementById('toc');
   var slider = document.getElementById('slider');
-  var cur = null; // {book, chStartX:[], step, total}
+  var cur = null; // {book, page, pages, w, chPage:[], flipping}
 
   // ---------- 书架 ----------
   function renderShelf() {
     reader.classList.add('hidden');
     shelf.classList.remove('hidden');
-    document.body.style.overflow = '';
     var h = '<header><h1>离谱历史书架</h1><p>历史比小说离谱，因为小说要讲逻辑</p></header><div class="grid">';
     LIB.forEach(function (b) {
       var pr = progress[b.id];
@@ -269,77 +285,214 @@ body {
     store('lib.lastBook', id);
     shelf.classList.add('hidden');
     reader.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
     hideMenu();
     var html = '';
     book.chapters.forEach(function (c, i) {
       html += '<h1 data-ch="' + i + '">' + c.title + '</h1>' + c.html;
     });
-    content.innerHTML = html;
+    content.innerHTML = html + '<span class="pgend"></span>';
     document.getElementById('menuTitle').textContent = book.title;
-    cur = { book: book, chStartX: [], step: 0, total: 0 };
+    cur = { book: book, page: 0, pages: 1, w: 0, chPage: [], flipping: false };
     layout(function () {
       var pr = progress[book.id];
-      if (pr && pr.ratio > 0) {
-        scroller.scrollLeft = Math.round(pr.ratio * (scroller.scrollWidth - scroller.clientWidth));
-        snap(false);
-      }
-      updateFoot();
+      var p = (pr && pr.ratio > 0) ? Math.round(pr.ratio * (cur.pages - 1)) : 0;
+      setPage(p, false);
     });
   }
 
   // ---------- 分页布局 ----------
+  // 行宽上限 27 个汉字（微信读书手感）；宽屏（iPad横放）双栏对开
   function layout(cb) {
-    var w = scroller.clientWidth, colW = w - PAD * 2;
-    content.style.fontSize = prefs.fs + 'px';
-    content.style.padding = '0 ' + PAD + 'px';
+    var w = stage.clientWidth, h = stage.clientHeight;
+    var fs = prefs.fs;
+    var maxW = Math.round(fs * 27);
+    var MIN = 18;
+    var two = w >= 860;
+    var colW, pad;
+    if (two) {
+      colW = Math.min(maxW, Math.floor((w - MIN * 4) / 2));
+      pad = Math.floor((w - 2 * colW) / 4);
+    } else {
+      colW = Math.min(maxW, w - MIN * 2);
+      pad = Math.floor((w - colW) / 2);
+    }
+    stage.classList.toggle('spread', two);
+    content.style.fontSize = fs + 'px';
+    content.style.width = w + 'px';
+    content.style.height = h + 'px';
+    content.style.padding = '0 ' + pad + 'px';
     content.style.columnWidth = colW + 'px';
-    content.style.columnGap = (PAD * 2) + 'px';
-    cur.step = colW + PAD * 2;
+    content.style.columnGap = (pad * 2) + 'px';
+    content.style.transition = 'none';
+    content.style.transform = 'translateX(0px)';
+    cur.w = w;
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
-        cur.total = scroller.scrollWidth;
-        cur.chStartX = [];
+        var srect = stage.getBoundingClientRect();
+        var endEl = content.querySelector('.pgend');
+        var endX = endEl ? (endEl.getBoundingClientRect().left - srect.left) : content.scrollWidth;
+        cur.pages = Math.max(1, Math.floor(endX / w) + 1);
+        cur.chPage = [];
         content.querySelectorAll('h1[data-ch]').forEach(function (el) {
-          var x = el.getBoundingClientRect().left + scroller.scrollLeft - PAD;
-          cur.chStartX.push(Math.max(0, Math.round(x / cur.step) * cur.step));
+          cur.chPage.push(Math.max(0, Math.floor((el.getBoundingClientRect().left - srect.left) / w)));
         });
         if (cb) cb();
       });
     });
   }
 
-  function pageCount() { return Math.max(1, Math.round(cur.total / cur.step)); }
-  function curPage() { return Math.round(scroller.scrollLeft / cur.step); }
-  function goPage(n, smooth) {
-    n = Math.max(0, Math.min(pageCount() - 1, n));
-    scroller.scrollTo({ left: n * cur.step, behavior: smooth ? 'smooth' : 'auto' });
+  function clampPage(n) { return Math.max(0, Math.min(cur.pages - 1, n)); }
+
+  function setPage(n, anim) {
+    n = clampPage(n);
+    content.style.transition = anim ? 'transform .3s cubic-bezier(.25,.6,.3,1)' : 'none';
+    content.style.transform = 'translateX(' + (-n * cur.w) + 'px)';
+    cur.page = n;
+    updateFoot();
   }
-  function snap(smooth) { goPage(curPage(), smooth); }
+
+  // ---------- 仿真翻页（覆盖式：当前页滑走/滑入，带页边阴影） ----------
+  function makeLayer(showPage, fwd) {
+    var l = document.createElement('div');
+    l.className = 'fliplayer';
+    var c = content.cloneNode(true);
+    c.removeAttribute('id');
+    c.style.cssText = content.style.cssText;
+    c.style.transition = 'none';
+    c.style.transform = 'translateX(' + (-showPage * cur.w) + 'px)';
+    l.appendChild(c);
+    l.style.transform = fwd ? 'translateX(0px)' : 'translateX(' + (-cur.w - 50) + 'px)';
+    stage.appendChild(l);
+    return l;
+  }
+
+  function flip(target) {
+    if (!cur || cur.flipping) return;
+    target = clampPage(target);
+    if (target === cur.page) return;
+    if (prefs.flip !== 'cover') {
+      cur.flipping = true;
+      setPage(target, true);
+      setTimeout(function () { cur.flipping = false; }, 320);
+      return;
+    }
+    var fwd = target > cur.page;
+    var orig = cur.page;
+    var layer = makeLayer(fwd ? orig : target, fwd);
+    if (fwd) setPage(target, false);
+    cur.flipping = true;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        layer.style.transition = 'transform .32s cubic-bezier(.25,.6,.3,1)';
+        layer.style.transform = fwd ? 'translateX(' + (-cur.w - 50) + 'px)' : 'translateX(0px)';
+      });
+    });
+    setTimeout(function () {
+      if (!fwd) setPage(target, false);
+      layer.remove();
+      cur.flipping = false;
+      updateFoot();
+    }, 350);
+  }
+
+  // ---------- 手指跟随拖拽翻页 ----------
+  var D = null, suppressClick = false;
+  stage.addEventListener('touchstart', function (e) {
+    if (!cur || cur.flipping || !menu.classList.contains('hidden')) { D = null; return; }
+    if (e.touches.length !== 1) { D = null; return; }
+    D = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(),
+          active: false, dir: 0, layer: null, orig: 0, target: 0, dx: 0 };
+  }, { passive: true });
+
+  stage.addEventListener('touchmove', function (e) {
+    if (!D || !cur) return;
+    var t = e.touches[0];
+    var dx = t.clientX - D.x, dy = t.clientY - D.y;
+    if (!D.active) {
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) {
+        if (Math.abs(dy) > 18) D = null;
+        return;
+      }
+      var sel = window.getSelection();
+      if (sel && sel.toString()) { D = null; return; }
+      var dir = dx < 0 ? 1 : -1;
+      var target = cur.page + dir;
+      if (target < 0 || target > cur.pages - 1) { D = null; return; }
+      D.active = true; D.dir = dir; D.orig = cur.page; D.target = target;
+      if (prefs.flip === 'cover') {
+        D.layer = makeLayer(dir > 0 ? D.orig : target, dir > 0);
+        if (dir > 0) setPage(target, false);
+      }
+    }
+    e.preventDefault();
+    D.dx = dx;
+    if (prefs.flip === 'cover') {
+      var tx;
+      if (D.dir > 0) tx = Math.min(0, Math.max(-cur.w, dx));
+      else tx = (-cur.w - 50) + Math.min(cur.w + 50, Math.max(0, dx));
+      D.layer.style.transition = 'none';
+      D.layer.style.transform = 'translateX(' + tx + 'px)';
+    } else {
+      var lim = D.dir > 0 ? Math.min(0, dx) : Math.max(0, dx);
+      content.style.transition = 'none';
+      content.style.transform = 'translateX(' + (-D.orig * cur.w + lim) + 'px)';
+    }
+  }, { passive: false });
+
+  function endDrag() {
+    if (!D) return;
+    if (!D.active) { D = null; return; }
+    suppressClick = true;
+    setTimeout(function () { suppressClick = false; }, 400);
+    var dx = D.dx, w = cur.w;
+    var quick = (Date.now() - D.t) < 200 && Math.abs(dx) > 30;
+    var commit = quick || Math.abs(dx) > w * 0.2;
+    if (D.dir > 0 && dx > 0) commit = false;
+    if (D.dir < 0 && dx < 0) commit = false;
+    cur.flipping = true;
+    var layer = D.layer, dir = D.dir, orig = D.orig, target = D.target;
+    if (prefs.flip === 'cover') {
+      layer.style.transition = 'transform .24s ease-out';
+      if (dir > 0) layer.style.transform = commit ? 'translateX(' + (-w - 50) + 'px)' : 'translateX(0px)';
+      else layer.style.transform = commit ? 'translateX(0px)' : 'translateX(' + (-w - 50) + 'px)';
+      setTimeout(function () {
+        if (dir > 0) { if (!commit) setPage(orig, false); }
+        else { if (commit) setPage(target, false); }
+        layer.remove();
+        cur.flipping = false;
+        updateFoot();
+      }, 270);
+    } else {
+      setPage(commit ? target : orig, true);
+      setTimeout(function () { cur.flipping = false; }, 320);
+    }
+    D = null;
+  }
+  stage.addEventListener('touchend', endDrag);
+  stage.addEventListener('touchcancel', endDrag);
 
   // ---------- 页脚信息 / 进度 ----------
-  function chapterAt(x) {
+  function chapterAt(page) {
     var i = 0;
-    for (var k = 0; k < cur.chStartX.length; k++) if (cur.chStartX[k] <= x + 4) i = k;
+    for (var k = 0; k < cur.chPage.length; k++) if (cur.chPage[k] <= page) i = k;
     return i;
   }
   function updateFoot() {
     if (!cur) return;
-    var x = scroller.scrollLeft;
-    var max = Math.max(1, cur.total - scroller.clientWidth);
-    var pct = Math.min(1, (x + scroller.clientWidth) / cur.total);
-    var ci = chapterAt(x);
-    var start = cur.chStartX[ci];
-    var end = (ci + 1 < cur.chStartX.length) ? cur.chStartX[ci + 1] : cur.total;
-    var within = end > start ? (x + cur.step - start) / (end - start) : 1;
+    var p = cur.page, n = cur.pages;
+    var pct = n > 0 ? (p + 1) / n : 1;
+    var ci = chapterAt(p);
+    var start = cur.chPage[ci];
+    var end = (ci + 1 < cur.chPage.length) ? cur.chPage[ci + 1] : n;
+    var within = end > start ? (p - start + 1) / (end - start) : 1;
     within = Math.max(0, Math.min(1, within));
     var remainChars = Math.round(cur.book.chapters[ci].chars * (1 - within));
     var mins = Math.ceil(remainChars / READ_SPEED);
     document.getElementById('pf-ch').textContent = cur.book.chapters[ci].title.replace(/：.*/, '');
     document.getElementById('pf-info').textContent =
-      (mins > 0 ? '本章还剩 ' + mins + ' 分钟 · ' : '本章完 · ') + Math.round(pct * 100) + '%';
-    slider.value = Math.round((x / max) * 1000);
-    progress[cur.book.id] = { ratio: x / max, pct: pct };
+      (remainChars > 0 ? '本章还剩 ' + mins + ' 分钟 · ' : '本章完 · ') + Math.round(pct * 100) + '%';
+    slider.value = n > 1 ? Math.round((p / (n - 1)) * 1000) : 0;
+    progress[cur.book.id] = { ratio: n > 1 ? p / (n - 1) : 0, pct: pct };
     storeThrottled();
   }
   var stTimer = null;
@@ -348,23 +501,24 @@ body {
     stTimer = setTimeout(function () { stTimer = null; store('lib.progress', progress); }, 400);
   }
 
-  var scrollTimer = null;
-  scroller.addEventListener('scroll', function () {
-    updateFoot();
-    if (scrollTimer) clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(function () { snap(true); }, 90);
-  }, { passive: true });
-
   // ---------- 点按翻页 / 菜单 ----------
   reader.addEventListener('click', function (e) {
+    if (suppressClick) return;
     if (!menu.classList.contains('hidden')) return;
     var sel = window.getSelection();
     if (sel && sel.toString().trim()) return;
     if (e.target.closest('#pagefoot')) return;
     var w = window.innerWidth, x = e.clientX;
-    if (x < w * 0.3) goPage(curPage() - 1, true);
-    else if (x > w * 0.7) goPage(curPage() + 1, true);
+    if (x < w * 0.3) flip(cur.page - 1);
+    else if (x > w * 0.7) flip(cur.page + 1);
     else showMenu();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (!cur || reader.classList.contains('hidden')) return;
+    if (!menu.classList.contains('hidden')) return;
+    if (e.key === 'ArrowRight' || e.key === ' ') flip(cur.page + 1);
+    else if (e.key === 'ArrowLeft') flip(cur.page - 1);
   });
 
   function showMenu() {
@@ -383,14 +537,12 @@ body {
   });
 
   slider.addEventListener('input', function () {
-    var max = Math.max(1, cur.total - scroller.clientWidth);
-    scroller.scrollLeft = (slider.value / 1000) * max;
+    setPage(Math.round((slider.value / 1000) * (cur.pages - 1)), false);
   });
-  slider.addEventListener('change', function () { snap(false); });
 
   // ---------- 目录 ----------
   document.getElementById('btnToc').addEventListener('click', function () {
-    var ci = chapterAt(scroller.scrollLeft);
+    var ci = chapterAt(cur.page);
     var h = '<h2>' + cur.book.title + '</h2><p class="sub">' + (cur.book.subtitle || '') + '</p><ul>';
     cur.book.chapters.forEach(function (c, i) {
       h += '<li data-i="' + i + '" class="' + (i === ci ? 'cur' : '') + '">' +
@@ -400,14 +552,14 @@ body {
     toc.innerHTML = h;
     toc.querySelectorAll('li').forEach(function (li) {
       li.addEventListener('click', function () {
-        goPage(Math.round(cur.chStartX[+li.getAttribute('data-i')] / cur.step), false);
-        hideMenu(); updateFoot();
+        setPage(cur.chPage[+li.getAttribute('data-i')] || 0, false);
+        hideMenu();
       });
     });
     toc.classList.add('open');
   });
 
-  // ---------- 字号 ----------
+  // ---------- 设置（字号 + 翻页方式） ----------
   var sheet = null;
   function openSheet(html) {
     closeSheet();
@@ -421,19 +573,29 @@ body {
 
   document.getElementById('btnFont').addEventListener('click', function () {
     var s = openSheet('<h3>字号</h3><div class="fontrow">' +
-      '<button id="fMinus">A−</button><span class="cur" id="fCur">' + prefs.fs + 'px</span><button id="fPlus">A＋</button></div>');
+      '<button id="fMinus">A−</button><span class="cur" id="fCur">' + prefs.fs + 'px</span><button id="fPlus">A＋</button></div>' +
+      '<h3 style="margin-top:20px">翻页方式</h3><div class="fontrow">' +
+      '<button id="fCover" class="' + (prefs.flip === 'cover' ? 'on' : '') + '">仿真翻页</button>' +
+      '<button id="fSlide" class="' + (prefs.flip === 'slide' ? 'on' : '') + '">平移</button></div>');
+    function relayout() {
+      var keep = cur.pages > 1 ? cur.page / (cur.pages - 1) : 0;
+      layout(function () { setPage(Math.round(keep * (cur.pages - 1)), false); });
+    }
     function setFs(v) {
-      prefs.fs = Math.max(15, Math.min(24, v));
+      prefs.fs = Math.max(16, Math.min(26, v));
       store('lib.prefs', prefs);
       s.querySelector('#fCur').textContent = prefs.fs + 'px';
-      var keep = progress[cur.book.id] ? progress[cur.book.id].ratio : 0;
-      layout(function () {
-        scroller.scrollLeft = keep * (scroller.scrollWidth - scroller.clientWidth);
-        snap(false); updateFoot();
-      });
+      relayout();
     }
     s.querySelector('#fMinus').addEventListener('click', function () { setFs(prefs.fs - 1); });
     s.querySelector('#fPlus').addEventListener('click', function () { setFs(prefs.fs + 1); });
+    function setFlip(m) {
+      prefs.flip = m; store('lib.prefs', prefs);
+      s.querySelector('#fCover').classList.toggle('on', m === 'cover');
+      s.querySelector('#fSlide').classList.toggle('on', m === 'slide');
+    }
+    s.querySelector('#fCover').addEventListener('click', function () { setFlip('cover'); });
+    s.querySelector('#fSlide').addEventListener('click', function () { setFlip('slide'); });
   });
 
   // ---------- 笔记 ----------
@@ -456,7 +618,7 @@ body {
       var quote = txt.slice(0, 200);
       openNoteInput(quote);
       sel.removeAllRanges();
-      noteBtn.remove(); noteBtn = null;
+      if (noteBtn) { noteBtn.remove(); noteBtn = null; }
     });
     document.body.appendChild(noteBtn);
   });
@@ -472,7 +634,7 @@ body {
       var v = s.querySelector('textarea').value.trim();
       notes.unshift({
         bookId: cur.book.id, book: cur.book.title,
-        ch: cur.book.chapters[chapterAt(scroller.scrollLeft)].title,
+        ch: cur.book.chapters[chapterAt(cur.page)].title,
         quote: quote, note: v, ts: new Date().toISOString().slice(0, 10)
       });
       store('lib.notes', notes);
@@ -508,11 +670,8 @@ body {
     if (!cur || reader.classList.contains('hidden')) return;
     if (rsTimer) clearTimeout(rsTimer);
     rsTimer = setTimeout(function () {
-      var keep = progress[cur.book.id] ? progress[cur.book.id].ratio : 0;
-      layout(function () {
-        scroller.scrollLeft = keep * (scroller.scrollWidth - scroller.clientWidth);
-        snap(false); updateFoot();
-      });
+      var keep = cur.pages > 1 ? cur.page / (cur.pages - 1) : 0;
+      layout(function () { setPage(Math.round(keep * (cur.pages - 1)), false); });
     }, 200);
   });
 
