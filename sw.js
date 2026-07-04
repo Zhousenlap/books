@@ -1,5 +1,5 @@
 // 离谱历史书架 — 离线缓存（bump CACHE 版本以触发更新）
-const CACHE = 'story-shelf-v3';
+const CACHE = 'story-shelf-v4';
 const CORE = [
   './', './index.html', './books.js', './manifest.webmanifest',
   './assets/icon-192.png', './assets/icon-512.png', './assets/apple-touch-icon.png'
